@@ -6,6 +6,7 @@ from Produto import (Produto, validar_codigo, validar_nome,
                      validar_categoria, validar_preco, validar_quantidade)
 
 SEPARADOR = "─" * 54
+ITENS_POR_PAGINA = 10
 
 
 def limpar_tela():
@@ -22,11 +23,37 @@ def cabecalho(titulo):
 
 def ler_input(prompt, obrigatorio=True):
     while True:
-        valor = input(prompt).strip()
-        if obrigatorio and not valor:
-            print("  ⚠  Campo obrigatório. Tente novamente.")
+        v = input(prompt).strip()
+        if obrigatorio and not v:
+            print("  ⚠  Obrigatório.")
             continue
-        return valor
+        return v
+
+
+def paginar(lista, titulo=""):
+    if not lista:
+        print("  Nenhum produto.")
+        return
+    total = len(lista)
+    pagina = 0
+    total_pags = (total + ITENS_POR_PAGINA - 1) // ITENS_POR_PAGINA
+    while True:
+        ini = pagina * ITENS_POR_PAGINA
+        fim = min(ini + ITENS_POR_PAGINA, total)
+        print(f"\n{titulo}  (Página {pagina + 1}/{total_pags}  |  {total} produto(s))")
+        print(f"{'CÓD':<12} {'NOME':<28} {'CATEGORIA':<15} {'PREÇO':>8} {'QTD':>5}")
+        print("─" * 72)
+        for p in lista[ini:fim]:
+            print(f"{p.codigo:<12} {p.nome[:28]:<28} {p.categoria[:15]:<15} R${p.preco:>7.2f} {p.quantidade:>5}")
+        if total_pags == 1:
+            break
+        nav = input("\n[P] Próxima  [A] Anterior  [Q] Sair → ").strip().upper()
+        if nav == "P" and pagina < total_pags - 1:
+            pagina += 1
+        elif nav == "A" and pagina > 0:
+            pagina -= 1
+        elif nav == "Q":
+            break
 
 
 def acao_cadastrar_produto():
@@ -48,8 +75,8 @@ def acao_cadastrar_produto():
             break
         print(f"  ⚠  {msg}")
     while True:
-        categoria = ler_input("  Categoria: ")
-        ok, msg = validar_categoria(categoria)
+        cat = ler_input("  Categoria: ")
+        ok, msg = validar_categoria(cat)
         if ok:
             break
         print(f"  ⚠  {msg}")
@@ -59,12 +86,11 @@ def acao_cadastrar_produto():
             break
         print(f"  ⚠  {msg}")
     while True:
-        ok, msg, quantidade = validar_quantidade(ler_input("  Quantidade: "))
+        ok, msg, qtd = validar_quantidade(ler_input("  Quantidade: "))
         if ok:
             break
         print(f"  ⚠  {msg}")
-    Produto = Produto(codigo, nome, categoria, preco, quantidade)
-    ok, msg = Estoque.cadastrar_produto(Produto)
+    ok, msg = Estoque.cadastrar_produto(Produto(codigo, nome, cat, preco, qtd))
     if ok:
         Arquivos.salvar_dados(Estoque.todos_os_produtos())
         Arquivos.registrar_log(f"CADASTRO '{codigo}'")
@@ -76,23 +102,22 @@ def acao_cadastrar_produto():
 def acao_editar_produto():
     cabecalho("EDITAR PRODUTO")
     codigo = ler_input("  Código: ").upper()
-    Produto = Estoque.buscar_por_codigo(codigo)
-    if not Produto:
+    p = Estoque.buscar_por_codigo(codigo)
+    if not p:
         print(f"  ✖  Não encontrado.")
         return
-    print(f"\n  Atual: {Produto.nome} | {Produto.categoria} | R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
-    nome_novo = ler_input(f"  Novo nome [{Produto.nome}]: ", obrigatorio=False)
-    cat_nova  = ler_input(f"  Nova categoria [{Produto.categoria}]: ", obrigatorio=False)
-    preco_str = ler_input(f"  Novo preço [{Produto.preco:.2f}]: ", obrigatorio=False)
-    qtd_str   = ler_input(f"  Nova quantidade [{Produto.quantidade}]: ", obrigatorio=False)
+    nome_novo = ler_input(f"  Nome [{p.nome}]: ", obrigatorio=False)
+    cat_nova  = ler_input(f"  Categoria [{p.categoria}]: ", obrigatorio=False)
+    preco_str = ler_input(f"  Preço [{p.preco:.2f}]: ", obrigatorio=False)
+    qtd_str   = ler_input(f"  Quantidade [{p.quantidade}]: ", obrigatorio=False)
     preco_novo = None
     if preco_str:
-        ok, msg, preco_novo = validar_preco(preco_str)
+        ok, _, preco_novo = validar_preco(preco_str)
         if not ok:
             preco_novo = None
     qtd_nova = None
     if qtd_str:
-        ok, msg, qtd_nova = validar_quantidade(qtd_str)
+        ok, _, qtd_nova = validar_quantidade(qtd_str)
         if not ok:
             qtd_nova = None
     ok, msg = Estoque.editar_produto(codigo, nome=nome_novo or None,
@@ -109,19 +134,19 @@ def acao_editar_produto():
 def acao_remover_produto():
     cabecalho("REMOVER PRODUTO")
     codigo = ler_input("  Código: ").upper()
-    Produto = Estoque.buscar_por_codigo(codigo)
-    if not Produto:
-        print(f"  ✖  Produto '{codigo}' não encontrado.")
+    p = Estoque.buscar_por_codigo(codigo)
+    if not p:
+        print(f"  ✖  Não encontrado.")
         return
-    print(f"\n  Produto: {Produto.nome} | R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
-    if ler_input("  Confirmar remoção? (s/n): ").lower() != "s":
+    print(f"\n  Produto: {p.nome} | R${p.preco:.2f}")
+    if ler_input("  Confirmar? (s/n): ").lower() != "s":
         print("  Cancelado.")
         return
     ok, msg = Estoque.remover_produto(codigo)
     if ok:
         Arquivos.salvar_dados(Estoque.todos_os_produtos())
         Arquivos.registrar_log(f"REMOÇÃO '{codigo}'")
-        print("\n  ✔  Produto removido!")
+        print("\n  ✔  Removido!")
     else:
         print(f"\n  ✖  {msg}")
 
@@ -129,20 +154,55 @@ def acao_remover_produto():
 def acao_buscar_por_codigo():
     cabecalho("BUSCAR POR CÓDIGO")
     codigo = ler_input("  Código: ").upper()
-    Produto = Estoque.buscar_por_codigo(codigo)
-    if Produto:
-        print(f"\n  ✔  Código: {Produto.codigo} | Nome: {Produto.nome}")
-        print(f"     Categoria: {Produto.categoria} | Preço: R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
+    p = Estoque.buscar_por_codigo(codigo)
+    if p:
+        print(f"\n  ✔  {p.codigo} | {p.nome} | {p.categoria} | R${p.preco:.2f} | Qtd: {p.quantidade}")
     else:
-        print(f"\n  ✖  Produto '{codigo}' não encontrado.")
+        print(f"\n  ✖  Não encontrado.")
+
+
+def acao_buscar_por_nome():
+    cabecalho("BUSCAR POR NOME")
+    termo = ler_input("  Termo: ")
+    res = Estoque.buscar_por_nome(termo)
+    if res:
+        print(f"\n  {len(res)} resultado(s):")
+        paginar(res)
+    else:
+        print(f"  Nenhum produto encontrado para '{termo}'.")
+
+
+def acao_registrar_venda():
+    cabecalho("REGISTRAR VENDA")
+    codigo = ler_input("  Código: ").upper()
+    p = Estoque.buscar_por_codigo(codigo)
+    if not p:
+        print(f"  ✖  Não encontrado.")
+        return
+    print(f"\n  Produto: {p.nome}  |  Estoque: {p.quantidade}")
+    while True:
+        ok, msg, qtd = validar_quantidade(ler_input("  Quantidade vendida: "))
+        if ok:
+            break
+        print(f"  ⚠  {msg}")
+    ok, msg = Estoque.registrar_venda(codigo, qtd)
+    if ok:
+        Arquivos.salvar_dados(Estoque.todos_os_produtos())
+        Arquivos.registrar_log(f"VENDA '{codigo}' - {qtd} unidade(s)")
+        p2 = Estoque.buscar_por_codigo(codigo)
+        print(f"\n  ✔  Venda registrada! Estoque restante: {p2.quantidade}")
+    else:
+        print(f"\n  ✖  {msg}")
 
 
 MENU = [
-    ("1", "Cadastrar Produto",               acao_cadastrar_produto),
-    ("2", "Editar Produto",                  acao_editar_produto),
-    ("3", "Remover Produto",                 acao_remover_produto),
+    ("1", "Cadastrar produto",                acao_cadastrar_produto),
+    ("2", "Editar produto",                   acao_editar_produto),
+    ("3", "Remover produto",                  acao_remover_produto),
     ("4", "Buscar por código (bin. O(log n))", acao_buscar_por_codigo),
-    ("0", "Sair",                            None),
+    ("5", "Buscar por nome (linear O(n))",    acao_buscar_por_nome),
+    ("6", "Registrar venda",                  acao_registrar_venda),
+    ("0", "Sair",                             None),
 ]
 
 
