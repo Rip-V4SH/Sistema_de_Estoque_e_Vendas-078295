@@ -16,6 +16,10 @@ def pausar():
     input("\nPressione Enter para continuar...")
 
 
+def cabecalho(titulo):
+    print(f"\n{SEPARADOR}\n  {titulo}\n{SEPARADOR}")
+
+
 def ler_input(prompt, obrigatorio=True):
     while True:
         valor = input(prompt).strip()
@@ -23,10 +27,6 @@ def ler_input(prompt, obrigatorio=True):
             print("  ⚠  Campo obrigatório. Tente novamente.")
             continue
         return valor
-
-
-def cabecalho(titulo):
-    print(f"\n{SEPARADOR}\n  {titulo}\n{SEPARADOR}")
 
 
 def acao_cadastrar_produto():
@@ -38,7 +38,7 @@ def acao_cadastrar_produto():
             print(f"  ⚠  {msg}")
             continue
         if Estoque.buscar_por_codigo(codigo):
-            print(f"  ⚠  Código '{codigo}' já cadastrado.")
+            print("  ⚠  Código já existe.")
             continue
         break
     while True:
@@ -54,22 +54,20 @@ def acao_cadastrar_produto():
             break
         print(f"  ⚠  {msg}")
     while True:
-        preco_str = ler_input("  Preço (ex: 19.90): ")
-        ok, msg, preco = validar_preco(preco_str)
+        ok, msg, preco = validar_preco(ler_input("  Preço: "))
         if ok:
             break
         print(f"  ⚠  {msg}")
     while True:
-        qtd_str = ler_input("  Quantidade inicial: ")
-        ok, msg, quantidade = validar_quantidade(qtd_str)
+        ok, msg, quantidade = validar_quantidade(ler_input("  Quantidade: "))
         if ok:
             break
         print(f"  ⚠  {msg}")
-    produto = Produto(codigo, nome, categoria, preco, quantidade)
-    ok, msg = Estoque.cadastrar_produto(produto)
+    Produto = Produto(codigo, nome, categoria, preco, quantidade)
+    ok, msg = Estoque.cadastrar_produto(Produto)
     if ok:
         Arquivos.salvar_dados(Estoque.todos_os_produtos())
-        Arquivos.registrar_log(f"CADASTRO produto '{codigo}'")
+        Arquivos.registrar_log(f"CADASTRO '{codigo}'")
         print(f"\n  ✔  Produto '{nome}' cadastrado!")
     else:
         print(f"\n  ✖  {msg}")
@@ -78,49 +76,78 @@ def acao_cadastrar_produto():
 def acao_editar_produto():
     cabecalho("EDITAR PRODUTO")
     codigo = ler_input("  Código: ").upper()
-    produto = Estoque.buscar_por_codigo(codigo)
-    if not produto:
-        print(f"  ✖  Produto '{codigo}' não encontrado.")
+    Produto = Estoque.buscar_por_codigo(codigo)
+    if not Produto:
+        print(f"  ✖  Não encontrado.")
         return
-    print(f"\n  Atual: {produto.nome} | {produto.categoria} | R${produto.preco:.2f} | Qtd: {produto.quantidade}")
-    print("  (Deixe em branco para manter)\n")
-    nome_novo = ler_input(f"  Novo nome [{produto.nome}]: ", obrigatorio=False)
-    cat_nova  = ler_input(f"  Nova categoria [{produto.categoria}]: ", obrigatorio=False)
-    preco_str = ler_input(f"  Novo preço [{produto.preco:.2f}]: ", obrigatorio=False)
-    qtd_str   = ler_input(f"  Nova quantidade [{produto.quantidade}]: ", obrigatorio=False)
+    print(f"\n  Atual: {Produto.nome} | {Produto.categoria} | R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
+    nome_novo = ler_input(f"  Novo nome [{Produto.nome}]: ", obrigatorio=False)
+    cat_nova  = ler_input(f"  Nova categoria [{Produto.categoria}]: ", obrigatorio=False)
+    preco_str = ler_input(f"  Novo preço [{Produto.preco:.2f}]: ", obrigatorio=False)
+    qtd_str   = ler_input(f"  Nova quantidade [{Produto.quantidade}]: ", obrigatorio=False)
     preco_novo = None
     if preco_str:
         ok, msg, preco_novo = validar_preco(preco_str)
         if not ok:
-            print(f"  ⚠  {msg}")
             preco_novo = None
     qtd_nova = None
     if qtd_str:
         ok, msg, qtd_nova = validar_quantidade(qtd_str)
         if not ok:
-            print(f"  ⚠  {msg}")
             qtd_nova = None
     ok, msg = Estoque.editar_produto(codigo, nome=nome_novo or None,
                                      categoria=cat_nova or None,
                                      preco=preco_novo, quantidade=qtd_nova)
     if ok:
         Arquivos.salvar_dados(Estoque.todos_os_produtos())
-        Arquivos.registrar_log(f"EDIÇÃO produto '{codigo}'")
-        print("\n  ✔  Produto atualizado!")
+        Arquivos.registrar_log(f"EDIÇÃO '{codigo}'")
+        print("\n  ✔  Atualizado!")
     else:
         print(f"\n  ✖  {msg}")
 
 
+def acao_remover_produto():
+    cabecalho("REMOVER PRODUTO")
+    codigo = ler_input("  Código: ").upper()
+    Produto = Estoque.buscar_por_codigo(codigo)
+    if not Produto:
+        print(f"  ✖  Produto '{codigo}' não encontrado.")
+        return
+    print(f"\n  Produto: {Produto.nome} | R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
+    if ler_input("  Confirmar remoção? (s/n): ").lower() != "s":
+        print("  Cancelado.")
+        return
+    ok, msg = Estoque.remover_produto(codigo)
+    if ok:
+        Arquivos.salvar_dados(Estoque.todos_os_produtos())
+        Arquivos.registrar_log(f"REMOÇÃO '{codigo}'")
+        print("\n  ✔  Produto removido!")
+    else:
+        print(f"\n  ✖  {msg}")
+
+
+def acao_buscar_por_codigo():
+    cabecalho("BUSCAR POR CÓDIGO")
+    codigo = ler_input("  Código: ").upper()
+    Produto = Estoque.buscar_por_codigo(codigo)
+    if Produto:
+        print(f"\n  ✔  Código: {Produto.codigo} | Nome: {Produto.nome}")
+        print(f"     Categoria: {Produto.categoria} | Preço: R${Produto.preco:.2f} | Qtd: {Produto.quantidade}")
+    else:
+        print(f"\n  ✖  Produto '{codigo}' não encontrado.")
+
+
 MENU = [
-    ("1", "Cadastrar produto", acao_cadastrar_produto),
-    ("2", "Editar produto",    acao_editar_produto),
-    ("0", "Sair",              None),
+    ("1", "Cadastrar Produto",               acao_cadastrar_produto),
+    ("2", "Editar Produto",                  acao_editar_produto),
+    ("3", "Remover Produto",                 acao_remover_produto),
+    ("4", "Buscar por código (bin. O(log n))", acao_buscar_por_codigo),
+    ("0", "Sair",                            None),
 ]
 
 
 def main():
-    produtos = Arquivos.carregar_dados()
-    Estoque.inicializar(produtos)
+    Estoque.inicializar(Arquivos.carregar_dados())
     while True:
         limpar_tela()
         print("\n" + "═" * 54)
