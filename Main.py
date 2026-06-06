@@ -32,7 +32,7 @@ def ler_input(prompt, obrigatorio=True):
 
 def paginar(lista, titulo=""):
     if not lista:
-        print("  Nenhum produto.")
+        print("  Nenhum Produto.")
         return
     total = len(lista)
     pagina = 0
@@ -40,7 +40,7 @@ def paginar(lista, titulo=""):
     while True:
         ini = pagina * ITENS_POR_PAGINA
         fim = min(ini + ITENS_POR_PAGINA, total)
-        print(f"\n{titulo}  (Página {pagina + 1}/{total_pags}  |  {total} produto(s))")
+        print(f"\n{titulo}  (Pág {pagina + 1}/{total_pags}  |  {total} Produto(s))")
         print(f"{'CÓD':<12} {'NOME':<28} {'CATEGORIA':<15} {'PREÇO':>8} {'QTD':>5}")
         print("─" * 72)
         for p in lista[ini:fim]:
@@ -166,10 +166,9 @@ def acao_buscar_por_nome():
     termo = ler_input("  Termo: ")
     res = Estoque.buscar_por_nome(termo)
     if res:
-        print(f"\n  {len(res)} resultado(s):")
-        paginar(res)
+        paginar(res, f"Resultados para '{termo}' →")
     else:
-        print(f"  Nenhum produto encontrado para '{termo}'.")
+        print(f"  Nenhum Produto encontrado.")
 
 
 def acao_registrar_venda():
@@ -181,28 +180,52 @@ def acao_registrar_venda():
         return
     print(f"\n  Produto: {p.nome}  |  Estoque: {p.quantidade}")
     while True:
-        ok, msg, qtd = validar_quantidade(ler_input("  Quantidade vendida: "))
+        ok, msg, qtd = validar_quantidade(ler_input("  Quantidade: "))
         if ok:
             break
         print(f"  ⚠  {msg}")
     ok, msg = Estoque.registrar_venda(codigo, qtd)
     if ok:
         Arquivos.salvar_dados(Estoque.todos_os_produtos())
-        Arquivos.registrar_log(f"VENDA '{codigo}' - {qtd} unidade(s)")
+        Arquivos.registrar_log(f"VENDA '{codigo}' - {qtd} un.")
         p2 = Estoque.buscar_por_codigo(codigo)
-        print(f"\n  ✔  Venda registrada! Estoque restante: {p2.quantidade}")
+        print(f"\n  ✔  Venda registrada! Restante: {p2.quantidade}")
     else:
         print(f"\n  ✖  {msg}")
 
 
+def acao_listar_por_codigo():
+    cabecalho("PRODUTOS ORDENADOS POR CÓDIGO")
+    paginar(Estoque.produtos_ordenados_por_codigo(), "Listagem por código →")
+
+
+def acao_listar_por_categoria():
+    cabecalho("LISTAR POR CATEGORIA")
+    cats = Estoque.categorias_disponiveis()
+    if not cats:
+        print("  Nenhuma categoria.")
+        return
+    print("  Categorias:")
+    for i, c in enumerate(cats, 1):
+        print(f"    {i}. {c}")
+    cat = ler_input("\n  Categoria: ")
+    res = Estoque.listar_por_categoria(cat)
+    if res:
+        paginar(res, f"Categoria: {cat} →")
+    else:
+        print(f"  Nenhum Produto na categoria '{cat}'.")
+
+
 MENU = [
-    ("1", "Cadastrar produto",                acao_cadastrar_produto),
-    ("2", "Editar produto",                   acao_editar_produto),
-    ("3", "Remover produto",                  acao_remover_produto),
+    ("1", "Cadastrar Produto",                 acao_cadastrar_produto),
+    ("2", "Editar Produto",                    acao_editar_produto),
+    ("3", "Remover Produto",                   acao_remover_produto),
     ("4", "Buscar por código (bin. O(log n))", acao_buscar_por_codigo),
-    ("5", "Buscar por nome (linear O(n))",    acao_buscar_por_nome),
-    ("6", "Registrar venda",                  acao_registrar_venda),
-    ("0", "Sair",                             None),
+    ("5", "Buscar por nome (linear O(n))",     acao_buscar_por_nome),
+    ("6", "Registrar venda",                   acao_registrar_venda),
+    ("7", "Listar por código (ordenado)",      acao_listar_por_codigo),
+    ("8", "Listar por categoria",              acao_listar_por_categoria),
+    ("0", "Sair",                              None),
 ]
 
 
